@@ -17,6 +17,11 @@ const productSchema = mongoose.Schema(
       required: true,
     },
 
+    brand: {
+      type: String,
+      required: true,
+    },
+
     discount: {
       type: Number,
       default: 0,
@@ -32,7 +37,7 @@ const productSchema = mongoose.Schema(
       default: false,
     },
 
-    isNew: {
+    new: {
       type: Boolean,
       default: false,
     },
@@ -51,7 +56,7 @@ const productSchema = mongoose.Schema(
     images: {
       type: [String],
       required: true,
-      validate: [(arr) => arr.length === 5, "5 images required"],
+      validate: [(arr) => arr.length === 3, "3 images required"],
     },
 
     category: {
