@@ -56,7 +56,7 @@ const productSchema = mongoose.Schema(
     images: {
       type: [String],
       required: true,
-      validate: [(arr) => arr.length === 3, "3 images required"],
+      validate: [(arr) => arr.length === 4, "4 images required"],
     },
 
     category: {

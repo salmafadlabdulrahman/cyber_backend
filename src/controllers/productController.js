@@ -12,10 +12,11 @@ const getProducts = async (req, res) => {
     in the filter object, and it's gonna filter the cars that it's category 
     are IN the filter */
     const filter = {};
-    // if (req.query.category) {
-    //   const categories = req.query.category.split(",");
-    //   filter.category = { $in: categories };
-    // }
+    if (req.query.category) {
+      const categories = req.query.category.split(",");
+      filter.category = { $in: categories };
+    }
+    console.log(filter)
 
     if (req.query.brand) {
       const brands = req.query.brand.split(",");
@@ -33,9 +34,9 @@ const getProducts = async (req, res) => {
     const [products, total] = await Promise.all([
       Product.find(filter)
         .populate("category")
-        .sort({ createdAt: -1 }) //the recently created products will be at the beginning
-        .skip(skip)
-        .limit(limit),
+        .sort({ createdAt: -1 }), //the recently created products will be at the beginning
+        // .skip(skip)
+        // .limit(limit),
       Product.countDocuments(filter),
     ]);
 
@@ -79,11 +80,22 @@ const createProduct = async (req, res) => {
       return res.status(400).json({ message: "Category doesn't exist" });
     }
 
-    if (!req.files || req.files.length !== 3) {
-      return res.status(400).json({ message: "3 images are required" });
+    if (!req.files || req.files.length !== 4) {
+      return res.status(400).json({ message: "4 images are required" });
     }
 
     const imageUrls = req.files.map((file) => file.path);
+
+    const spec = {};
+    Object.keys(req.body).forEach((key) => {
+      console.log(key);
+      if (key.startsWith("spec.")) {
+        const specKey = key.replace("spec.", "");
+        spec[specKey] = req.body[key];
+      }
+    });
+
+    const hasIncomingSpec = Object.keys(spec).length > 0;
 
     let product = new Product({
       name: req.body.name,
@@ -96,7 +108,7 @@ const createProduct = async (req, res) => {
       isFeatured: req.body.isFeatured,
       new: req.body.new,
       colors: req.body.colors,
-      spec: req.body.spec,
+      spec: hasIncomingSpec ? spec : {},
       category: req.body.category,
     });
 
@@ -146,7 +158,7 @@ const updateProduct = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    const categoryExists = await Category.findById(req.body.category);
+    const categoryExists = await Category.findById(existingProduct.category);
     if (!categoryExists) {
       return res.status(400).json({ message: "Invalid Category" });
     }
@@ -154,14 +166,25 @@ const updateProduct = async (req, res) => {
     let imageUrls = existingProduct.images;
 
     if (req.files && req.files.length > 0) {
-      // if (req.files !== 3) {
-      //   return res.status(400).json({ message: "3 images are required" });
-      // }
-
       imageUrls = req.files.map(
         (file, i) => file.path ?? existingProduct.req.files[i]
       );
     }
+
+    const spec = {};
+    Object.keys(req.body).forEach((key) => {
+      console.log(key);
+      if (key.startsWith("spec.")) {
+        const specKey = key.replace("spec.", "");
+        spec[specKey] = req.body[key];
+      }
+    });
+
+    const hasIncomingSpec = Object.keys(spec).length > 0;
+    //we have to convert the object to a plain js object, because it has some internal methods of mongoose that we don't want to include in the response
+    const existingSpecObj = existingProduct.spec
+      ? existingProduct.spec.toObject()
+      : {};
 
     const updatedProduct = await Product.findByIdAndUpdate(
       req.params.id,
@@ -175,7 +198,9 @@ const updateProduct = async (req, res) => {
         isFeatured: req.body.isFeatured ?? existingProduct.isFeatured,
         new: req.body.new ?? existingProduct.new,
         colors: req.body.colors ?? existingProduct.colors,
-        spec: req.body.spec ?? existingProduct.spec,
+        spec: hasIncomingSpec
+          ? { ...existingSpecObj, ...spec }
+          : existingSpecObj,
         images: imageUrls,
         category: req.body.category ?? existingProduct.category,
       },
@@ -208,4 +233,10 @@ const deleteProduct = async (req, res) => {
   }
 };
 
-module.exports = { getProducts, createProduct, getProductById, updateProduct, deleteProduct };
+module.exports = {
+  getProducts,
+  createProduct,
+  getProductById,
+  updateProduct,
+  deleteProduct,
+};
