@@ -4,8 +4,16 @@ const productsRouter = require("./src/routes/productRoutes");
 const usersRouter = require("./src/routes/userRoutes");
 const authRouter = require("./src/routes/authRoutes");
 const authJwt = require("./src/auth/jwt");
+const cors = require("cors");
 
 const app = express();
+
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  })
+);
 
 app.use(authJwt());
 app.use(express.json());

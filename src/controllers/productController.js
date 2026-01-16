@@ -11,40 +11,56 @@ const getProducts = async (req, res) => {
     /*Filter: if we have one category or more then we split and save them
     in the filter object, and it's gonna filter the cars that it's category 
     are IN the filter */
+
     const filter = {};
     if (req.query.category) {
       const categories = req.query.category.split(",");
       filter.category = { $in: categories };
     }
-    console.log(filter)
 
     if (req.query.brand) {
       const brands = req.query.brand.split(",");
       filter.brand = { $in: brands };
     }
 
-    if (req.query.price) {
-      const maxPrice = req.query.price;
-      filter.price = { $lte: Number(maxPrice) };
+    if (req.query.priceRanges) {
+      const ranges = req.query.priceRanges;
+      const rangeArray = Array.isArray(ranges) ? ranges : [ranges];
+
+      filter.$and = filter.$and || [];
+      filter.$and.push({
+        $or: rangeArray.map((range) => {
+          if (range.endsWith("+")) {
+            const min = Number(range.replace("+", ""));
+            return { price: { $gte: min } };
+          }
+          const [min, max] = range.split("-").map(Number);
+          const condition = {};
+          if (!isNaN(min)) condition.$gte = min;
+          if (!isNaN(max)) condition.$lte = max;
+          return { price: condition };
+        }),
+      });
     }
 
     /*The Promise.all: we wait for all the promises to resolve and then run */
     //we find the cars that match the filter, and the second promise to get the amount of the cars
 
     const [products, total] = await Promise.all([
-      Product.find(filter)
-        .populate("category")
-        .sort({ createdAt: -1 }), //the recently created products will be at the beginning
-        // .skip(skip)
-        // .limit(limit),
+      Product.find(filter).populate("category").sort({ createdAt: -1 }), //the recently created products will be at the beginning
+      // .skip(skip)
+      // .limit(limit),
       Product.countDocuments(filter),
     ]);
 
     const totalPages = Math.ceil(total / limit); //how many page we've got left
 
     if (products.length === 0) {
-      return res.status(400).json({
-        message: "no products exist",
+      return res.status(200).json({
+        data: [],
+        total: 0,
+        page,
+        totalPages: 0,
       });
     }
 
