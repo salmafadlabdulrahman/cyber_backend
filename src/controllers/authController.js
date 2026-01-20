@@ -5,10 +5,6 @@ const jwt = require("jsonwebtoken");
 const login = async (req, res) => {
   try {
     const user = await User.findOne({ email: req.body.email });
-    // if (!user) {
-    //   return res.status(400).json({ message: "user can't be found" });
-    // }
-
     //2- if the user exists, compare the password they logged in and the one that exists and if they're the same
     //3- generate a token for them
     //4- if the user is admin, then add it to the token. because later
@@ -20,16 +16,27 @@ const login = async (req, res) => {
           isAdmin: user.isAdmin,
         },
         process.env.SECRET_KEY,
-        { expiresIn: "1w" }
+        { expiresIn: "1w" },
       );
 
+      res.cookie("token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
       res.status(200).json({
+        success: true,
         message: "user authenticated",
-        email: user.email,
-        token: token,
+        user: {
+          email: user.email,
+          name: user.name,
+          isAdmin: user.isAdmin,
+        },
       });
     } else {
-      res.status(400).json({ mesage: "Invalid Email or Password" });
+      res.status(400).json({ message: "Invalid Email or Password" });
     }
   } catch (error) {
     res.status(500).json({
@@ -43,12 +50,12 @@ const login = async (req, res) => {
 const signup = async (req, res) => {
   try {
     const { name, email, password, isAdmin } = req.body;
-    if (!req.body.email || !req.body.password || !req.body.name) {
+    if (!email || !password || !name) {
       return res
         .status(400)
         .json({ message: "Name, Email, and Password are required" });
     }
-    let user = await User.findOne({ email: req.body.email.toLowerCase() });
+    let user = await User.findOne({ email: email.toLowerCase() });
 
     if (user) {
       return res.status(400).json({ message: "User Already Exists" });
@@ -56,8 +63,8 @@ const signup = async (req, res) => {
 
     const userData = {
       name,
-      email: req.body.email.toLowerCase(),
-      password: bcrypt.hashSync(req.body.password, 10),
+      email: email.toLowerCase(),
+      password: bcrypt.hashSync(password, 10),
       isAdmin,
     };
 
@@ -75,12 +82,19 @@ const signup = async (req, res) => {
         isAdmin: user.isAdmin,
       },
       process.env.SECRET_KEY,
-      { expiresIn: "1w" }
+      { expiresIn: "1w" },
     );
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
 
     return res
       .status(201)
-      .json({ message: "Account created successfully", token: token });
+      .json({ success: true, message: "Account created successfully" });
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -90,4 +104,20 @@ const signup = async (req, res) => {
   }
 };
 
-module.exports = { login, signup };
+const getUser = async (req, res) => {
+  res.json({
+    user: req.user,
+  });
+};
+
+const logout = async (req, res) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    secure: process.env.NODE_ENV === "production",
+  });
+
+  res.json({ message: "Logged out" });
+};
+
+module.exports = { login, signup, getUser, logout };

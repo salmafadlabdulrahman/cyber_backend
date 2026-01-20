@@ -9,6 +9,7 @@ function authJwt() {
   return expressJwt({
     secret,
     algorithms: ["HS256"],
+    getToken: (req) => req.cookies.token,
     isRevoked: isRevoked,
   }).unless({
     path: [

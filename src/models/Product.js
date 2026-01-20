@@ -42,6 +42,11 @@ const productSchema = mongoose.Schema(
       default: false,
     },
 
+    salesCount: {
+      type: Number,
+      default: 0,
+    },
+
     colors: {
       type: [String],
       default: [],
@@ -65,7 +70,7 @@ const productSchema = mongoose.Schema(
       required: true,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 module.exports = mongoose.model("Product", productSchema);

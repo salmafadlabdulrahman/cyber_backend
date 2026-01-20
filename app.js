@@ -5,6 +5,8 @@ const usersRouter = require("./src/routes/userRoutes");
 const authRouter = require("./src/routes/authRoutes");
 const authJwt = require("./src/auth/jwt");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
+
 
 const app = express();
 
@@ -15,7 +17,8 @@ app.use(
   })
 );
 
-app.use(authJwt());
+// app.use(authJwt());
+app.use(cookieParser());
 app.use(express.json());
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/products", productsRouter);

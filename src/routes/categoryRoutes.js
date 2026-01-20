@@ -1,4 +1,7 @@
 const express = require("express");
+const authMiddleware = require("../middleware/auth.middleware");
+const adminMiddleware = require("../middleware/admin.middleware");
+
 const {
   getCategories,
   createCategory,
@@ -10,9 +13,9 @@ const {
 const router = express.Router();
 
 router.get("/", getCategories);
-router.post("/", createCategory);
-router.get("/:id", getCategoryById);
-router.put("/:id", updateCategory);
-router.delete("/:id", deleteCategory);
+router.post("/", authMiddleware, adminMiddleware, createCategory);
+router.get("/:id", authMiddleware, adminMiddleware, getCategoryById);
+router.put("/:id", authMiddleware, adminMiddleware, updateCategory);
+router.delete("/:id", authMiddleware, adminMiddleware, deleteCategory);
 
 module.exports = router;

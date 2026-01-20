@@ -5,7 +5,7 @@ const getProducts = async (req, res) => {
   try {
     /*Pagination */
     const page = req.query.page || 1;
-    const limit = req.query.limit || 3;
+    const limit = req.query.limit || 10;
     const skip = (page - 1) * limit;
 
     /*Filter: if we have one category or more then we split and save them
@@ -47,9 +47,11 @@ const getProducts = async (req, res) => {
     //we find the cars that match the filter, and the second promise to get the amount of the cars
 
     const [products, total] = await Promise.all([
-      Product.find(filter).populate("category").sort({ createdAt: -1 }), //the recently created products will be at the beginning
-      // .skip(skip)
-      // .limit(limit),
+      Product.find(filter)
+        .populate("category")
+        .sort({ createdAt: -1 }) //the recently created products will be at the beginning
+        .skip(skip)
+        .limit(limit),
       Product.countDocuments(filter),
     ]);
 
@@ -123,6 +125,7 @@ const createProduct = async (req, res) => {
       isBestSeller: req.body.isBestSeller,
       isFeatured: req.body.isFeatured,
       new: req.body.new,
+      salesCount: req.body.salesCount,
       colors: req.body.colors,
       spec: hasIncomingSpec ? spec : {},
       category: req.body.category,
@@ -131,7 +134,7 @@ const createProduct = async (req, res) => {
     const newProduct = await product.save();
     const populatedProduct = await Product.findById(newProduct._id).populate(
       "category",
-      "name"
+      "name",
     );
 
     res.status(201).json(populatedProduct);
@@ -149,7 +152,7 @@ const getProductById = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id).populate(
       "category",
-      "name"
+      "name",
     );
     if (!product) {
       console.log(product);
@@ -162,6 +165,47 @@ const getProductById = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch product",
+      error: error.message,
+    });
+  }
+};
+
+const getNewArrivalProducts = async (req, res) => {
+  try {
+    const products = await Product.find({ new: true })
+      .sort({ createdAt: -1 })
+      .limit(5);
+    return res.status(200).json(products);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch newly created products",
+      error: error.message,
+    });
+  }
+};
+
+const getFeaturedProducts = async (req, res) => {
+  try {
+    const products = await Product.find({ isFeatured: true }).limit(5);
+    return res.status(200).json(products);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch featured products",
+      error: error.message,
+    });
+  }
+};
+
+const getBestSellerProducts = async (req, res) => {
+  try {
+    const products = await Product.find().sort({ salesCount: -1 }).limit(6);
+    return res.status(200).json(products);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch best seller products",
       error: error.message,
     });
   }
@@ -183,7 +227,7 @@ const updateProduct = async (req, res) => {
 
     if (req.files && req.files.length > 0) {
       imageUrls = req.files.map(
-        (file, i) => file.path ?? existingProduct.req.files[i]
+        (file, i) => file.path ?? existingProduct.req.files[i],
       );
     }
 
@@ -213,6 +257,7 @@ const updateProduct = async (req, res) => {
         isBestSeller: req.body.isBestSeller ?? existingProduct.isBestSeller,
         isFeatured: req.body.isFeatured ?? existingProduct.isFeatured,
         new: req.body.new ?? existingProduct.new,
+        salesCount: req.body.salesCount ?? existingProduct.salesCount,
         colors: req.body.colors ?? existingProduct.colors,
         spec: hasIncomingSpec
           ? { ...existingSpecObj, ...spec }
@@ -220,7 +265,7 @@ const updateProduct = async (req, res) => {
         images: imageUrls,
         category: req.body.category ?? existingProduct.category,
       },
-      { new: true }
+      { new: true },
     ).populate("category", "name");
 
     res.status(200).json(updatedProduct);
@@ -253,6 +298,9 @@ module.exports = {
   getProducts,
   createProduct,
   getProductById,
+  getNewArrivalProducts,
+  getFeaturedProducts,
+  getBestSellerProducts,
   updateProduct,
   deleteProduct,
 };
